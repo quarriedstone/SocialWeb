@@ -36,6 +36,24 @@ def upload(request):
 
 
 @login_required(login_url='signin')
+def search(request):
+
+    user_object = User.objects.get(username=request.user.username)
+    user_profile = Profile.objects.get(user=user_object)
+    context = {
+        'user_profile': user_profile
+    }
+    if request.method == 'POST':
+        username = request.POST['username']
+        username_object = User.objects.filter(username__icontains=username)
+
+        username_profile_list = list(chain(*[Profile.objects.filter(id_user=users.id) for users in username_object]))
+
+        context['username_profile_list'] = username_profile_list
+    return render(request, 'search.html', context)
+
+
+@login_required(login_url='signin')
 def like_post(request):
     username = request.user.username
     post_id = request.GET.get('post_id')
