@@ -1,3 +1,5 @@
+import random
+
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib.auth.models import User, auth
@@ -13,11 +15,24 @@ def index(request):
     user_profile = Profile.objects.get(user=user_object)
 
     user_following_list = [users.user for users in FollowersCount.objects.filter(follower=request.user.username)]
-    feed_list = list(chain(*[Post.objects.filter(user=username) for username in user_following_list]))
+    feed_list = [(Post.objects.filter(user=username), Profile.objects.get(user=User.objects.get(username=username)))
+                for username in user_following_list]
 
-    posts = Post.objects.all()
+    # User suggestion
+    all_users = User.objects.all()
+    suggestions = [user for user in all_users if user.username not in user_following_list
+                   and user.username != user_object.username]
+    random.shuffle(suggestions)
+    top_suggestions = suggestions[:4]
+    username_profile_list = list(chain(*[Profile.objects.filter(id_user=user.id) for user in top_suggestions]))
 
-    return render(request, 'index.html', {'user_profile': user_profile, 'posts': feed_list})
+    context = {'user_profile': user_profile,
+               'posts': feed_list,
+               'suggestions': top_suggestions,
+               'suggestions_username_profile_list': username_profile_list,
+               }
+
+    return render(request, 'index.html', context)
 
 
 @login_required(login_url='signin')
@@ -37,7 +52,6 @@ def upload(request):
 
 @login_required(login_url='signin')
 def search(request):
-
     user_object = User.objects.get(username=request.user.username)
     user_profile = Profile.objects.get(user=user_object)
     context = {
